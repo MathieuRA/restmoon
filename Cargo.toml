@@ -1,0 +1,13 @@
+[package]
+name = "restmoon"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "A simple HTTP proxy that analyzes REST API traffic and provides real-time performance metrics"
+repository = "https://github.com/mathieura/restmoon"
+homepage = "https://github.com/mathieura/restmoon"
+keywords = ["proxy", "http", "analytics", "api", "monitoring", "rest-api"]
+categories = ["network-programming", "web-programming", "rest-api"]
+readme = "README.md"
+
+[dependencies]
