@@ -1,3 +1,4 @@
+mod http;
 mod utils;
 
 use std::{net::TcpListener, thread};
