@@ -1,7 +1,7 @@
 use std::{io::Write, net::TcpStream, time::Instant};
 
 use crate::{
-    http::{URL, request::HttpRequest},
+    http::{request::HttpRequest, url::URL},
     utils,
 };
 
@@ -45,16 +45,17 @@ pub fn handle_client(mut source_stream: TcpStream) {
         }
     };
 
-    // println!("destination {:?}", destination);
-    // need to handle own port. Like http://foo:9000
-    let port = url_destination.port;
-    let hostname: String = url_destination.hostname.clone();
-    let full_url = url_destination.to_string();
-
-    let mut target_stream: TcpStream = match TcpStream::connect(format!("{}:{}", hostname, port)) {
+    let mut target_stream: TcpStream = match TcpStream::connect(format!(
+        "{}:{}",
+        url_destination.hostname, url_destination.port
+    )) {
         Ok(stream) => stream,
         Err(e) => {
-            eprintln!("Error connecting to {}\r\n- {}", full_url, e);
+            eprintln!(
+                "Error connecting to {}\r\n- {}",
+                url_destination.to_string(),
+                e
+            );
             let response = "HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n";
             let _ = source_stream.write_all(response.as_bytes());
             return;
@@ -76,7 +77,7 @@ pub fn handle_client(mut source_stream: TcpStream) {
         date,
         req.method,
         req.path,
-        full_url,
+        url_destination.to_string(),
         duration.as_secs_f64() * 1000.0,
         status
     )
