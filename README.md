@@ -102,8 +102,9 @@ Contributions are welcome! This project is great for learning Rust networking co
 
 ## Future Features
 
-- [ ] Mesure response time 
-- [ ] Add payload size (body/response)
+- [x] Mesure response time 
+- [x] Add payload size (body/response)
+- [ ] Support keep-alive (source -> proxy -> destination)
 - [ ] Metrics persistence (SQLite/JSON)
 - [ ] WebUI dashboard for metrics visualization
 - [ ] Request/response filtering
