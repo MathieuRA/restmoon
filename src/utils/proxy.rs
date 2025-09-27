@@ -12,9 +12,9 @@ pub const HEADER_PROXY_DESTINATION: &str = "x-proxy-destination";
 // the issue that is we are creating a new Proxy for each request
 // maybe have a way to keep only one proxy per TcpConnection
 pub struct Proxy {
-    source: TcpStream,
-    target: TcpStream,
-    request: HttpRequest,
+    pub source: TcpStream,
+    pub target: TcpStream,
+    pub request: HttpRequest,
 }
 
 impl Proxy {
@@ -33,27 +33,14 @@ impl Proxy {
         });
     }
 
-    pub fn handle_client(&mut self) -> Result<(), Box<dyn Error>> {
-        let date = chrono::Utc::now().format("%H:%M:%S");
-        let start_time = Instant::now();
+    pub fn handle_client(&mut self) -> Result<usize, Box<dyn Error>> {
         self.forward_request();
         let (size, response) = self.read_response()?;
-        let duration = start_time.elapsed();
 
         // TODO: use Proxy::send_response()
         self.source.write_all(&response[..size]).unwrap();
 
-        println!(
-            "[{}] {} {} -> {} ({:.2}ms) [Response: {}]",
-            date,
-            self.request.method,
-            self.request.path,
-            self.request.destination.clone().to_string(),
-            duration.as_secs_f64() * 1000.0,
-            format_size(size)
-        );
-
-        return Ok(());
+        return Ok(size);
     }
 
     pub fn send_error_response(mut tcp_stream: TcpStream, error: Box<dyn Error>) {

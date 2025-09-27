@@ -1,9 +1,9 @@
 mod http;
 mod utils;
 
-use std::{net::TcpListener, thread};
+use std::{net::TcpListener, thread, time::Instant};
 
-use crate::utils::proxy::Proxy;
+use crate::utils::{print::final_log, proxy::Proxy, size::format_size};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     utils::print::initial_log();
@@ -31,12 +31,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                     };
 
-                    match proxy.handle_client() {
-                        Ok(_) => {}
+                    let date = chrono::Utc::now().format("%H:%M:%S");
+                    let start_time = Instant::now();
+
+                    let size = match proxy.handle_client() {
+                        Ok(size) => size,
                         Err(error) => {
                             Proxy::send_error_response(client_stream, error);
+                            0
                         }
-                    }
+                    };
+
+                    let duration = start_time.elapsed();
+
+                    final_log(&proxy, date, duration, size);
                 });
             }
             Err(e) => {

@@ -1,4 +1,8 @@
-use crate::utils;
+use std::time::Duration;
+
+use chrono::format::{DelayedFormat, StrftimeItems};
+
+use crate::utils::{self, proxy::Proxy, size::format_size};
 
 pub fn initial_log() {
     let config = utils::config::get_config();
@@ -13,4 +17,21 @@ pub fn initial_log() {
     println!("   Analyzing requests...\n");
     println!("📊 Request Analytics:");
     println!("----------------------------------------");
+}
+
+pub fn final_log(
+    proxy: &Proxy,
+    date: DelayedFormat<StrftimeItems>,
+    duration: Duration,
+    size: usize,
+) {
+    println!(
+        "[{}] {} {} -> {} ({:.2}ms) [Response: {}]",
+        date,
+        proxy.request.method,
+        proxy.request.path,
+        proxy.request.destination.clone().to_string(),
+        duration.as_secs_f64() * 1000.0,
+        format_size(size)
+    );
 }
