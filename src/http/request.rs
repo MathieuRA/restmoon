@@ -4,16 +4,35 @@ use std::{
     net::TcpStream,
 };
 
+use crate::{
+    http::url::URL,
+    utils::{self, proxy::HEADER_PROXY_DESTINATION},
+};
+
 #[derive(Debug)]
 pub struct HttpRequest {
     pub method: String,
     pub path: String,
     pub version: String,
     pub headers: HashMap<String, String>,
+    pub destination: URL,
     // body: Vec<u8>,
 }
 
 impl HttpRequest {
+    fn get_destination(headers: &HashMap<String, String>) -> Result<URL, String> {
+        if let Some(destination) = headers.get(HEADER_PROXY_DESTINATION) {
+            return Ok(URL::new(destination)?);
+        }
+
+        let config = utils::config::get_config();
+        if let Some(ref destination) = config.default_destination {
+            return Ok(URL::new(destination)?);
+        }
+
+        return Err("No destination found".into());
+    }
+
     pub fn parse(stream: &mut TcpStream) -> Result<Self, Box<dyn std::error::Error>> {
         let mut reader = BufReader::new(stream);
 
@@ -46,6 +65,9 @@ impl HttpRequest {
                 headers.insert(key, value);
             }
         }
+        let destination = HttpRequest::get_destination(&headers)?;
+        headers.remove(HEADER_PROXY_DESTINATION);
+        headers.insert("host".to_string(), destination.hostname.clone());
         // TODO: handle keep-alive between proxy and destination
         headers.insert("connection".to_string(), "close".to_string());
 
@@ -54,6 +76,7 @@ impl HttpRequest {
             path,
             version,
             headers,
+            destination,
         };
         return Ok(request);
     }

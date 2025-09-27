@@ -4,60 +4,35 @@ use std::{
     time::Instant,
 };
 
-use crate::{
-    http::{request::HttpRequest, url::URL},
-    utils::{self, size::format_size},
-};
+use crate::{http::request::HttpRequest, utils::size::format_size};
 
-const HEADER_PROXY_DESTINATION: &str = "x-proxy-destination";
-
-fn get_destination(req: &HttpRequest) -> Result<URL, String> {
-    if let Some(destination) = req.headers.get(HEADER_PROXY_DESTINATION) {
-        return Ok(URL::new(&destination)?);
-    };
-
-    let config = utils::config::get_config();
-    if let Some(ref destination) = config.default_destination {
-        return Ok(URL::new(&destination)?);
-    }
-
-    return Err("No destination found".into());
-}
+pub const HEADER_PROXY_DESTINATION: &str = "x-proxy-destination";
 
 pub fn handle_client(mut source_stream: TcpStream) {
-    let mut req = match HttpRequest::parse(&mut source_stream) {
+    let req = match HttpRequest::parse(&mut source_stream) {
         Ok(req) => req,
         Err(e) => {
             eprintln!("Error parsing request: {}", e);
-            return;
-        }
-    };
-
-    let url_destination = match get_destination(&req) {
-        Ok(dest) => dest,
-        Err(err) => {
-            let response = format!(
-                "HTTP/1.1 400 Bad Request\r\n\
-                 Content-Length: {}\r\n\
-                 \r\n\
-                 {}",
-                err.len(),
-                err
+            let error = e.to_string();
+            let err_response = format!(
+                "HTTP/1.1 400 Bad Request\r\nContent-Length: {}\r\n\r\n{}",
+                error.len(),
+                error
             );
-            let _ = source_stream.write_all(response.as_bytes());
+            let _ = source_stream.write_all(err_response.as_bytes());
             return;
         }
     };
 
     let mut target_stream: TcpStream = match TcpStream::connect(format!(
         "{}:{}",
-        url_destination.hostname, url_destination.port
+        req.destination.hostname, req.destination.port
     )) {
         Ok(stream) => stream,
         Err(e) => {
             eprintln!(
                 "Error connecting to {}\r\n- {}",
-                url_destination.to_string(),
+                req.destination.to_string(),
                 e
             );
             let err_response = "HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n";
@@ -65,12 +40,6 @@ pub fn handle_client(mut source_stream: TcpStream) {
             return;
         }
     };
-
-    // update host and remove proxy-destination
-    // TODO: do that at the request parsing?
-    req.headers.remove(HEADER_PROXY_DESTINATION);
-    req.headers
-        .insert("host".to_string(), url_destination.hostname.clone());
 
     let date = chrono::Utc::now().format("%H:%M:%S");
     let start_time = Instant::now();
@@ -104,7 +73,7 @@ pub fn handle_client(mut source_stream: TcpStream) {
         date,
         req.method,
         req.path,
-        url_destination.to_string(),
+        req.destination.to_string(),
         duration.as_secs_f64() * 1000.0,
         format_size(response_size)
     )
