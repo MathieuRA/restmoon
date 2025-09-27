@@ -1,8 +1,12 @@
-use std::{io::Write, net::TcpStream, time::Instant};
+use std::{
+    io::{Read, Write},
+    net::TcpStream,
+    time::Instant,
+};
 
 use crate::{
     http::{request::HttpRequest, url::URL},
-    utils,
+    utils::{self, size::format_size},
 };
 
 const HEADER_PROXY_DESTINATION: &str = "x-proxy-destination";
@@ -56,29 +60,52 @@ pub fn handle_client(mut source_stream: TcpStream) {
                 url_destination.to_string(),
                 e
             );
-            let response = "HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n";
-            let _ = source_stream.write_all(response.as_bytes());
+            let err_response = "HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n";
+            let _ = source_stream.write_all(err_response.as_bytes());
             return;
         }
     };
 
+    // update host and remove proxy-destination
+    // TODO: do that at the request parsing?
+    req.headers.remove(HEADER_PROXY_DESTINATION);
+    req.headers
+        .insert("host".to_string(), url_destination.hostname.clone());
+
     let date = chrono::Utc::now().format("%H:%M:%S");
     let start_time = Instant::now();
-    // stuff that forward the request
-    // request received, get duration
-    let duration = start_time.elapsed();
-    let status = "200";
+    if let Err(e) = target_stream.write_all(&req.to_bytes()) {
+        eprintln!("Error forwarding request: {}", e);
+        let err_response = "HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n";
+        let _ = source_stream.write_all(err_response.as_bytes());
+        return;
+    };
 
-    // Remove proxy destination before forwarding the request
-    req.headers.remove(HEADER_PROXY_DESTINATION);
+    let mut response_size = 0;
+    let mut buffer = [0; 4096];
+
+    loop {
+        match target_stream.read(&mut buffer) {
+            Ok(0) => break,
+            Ok(n) => {
+                response_size += n;
+                source_stream.write_all(&buffer[..n]).unwrap();
+            }
+            Err(e) => {
+                eprintln!("Error reading response: {}", e);
+                break;
+            }
+        }
+    }
+    let duration = start_time.elapsed();
 
     println!(
-        "[{}] {} {} -> {} ({:.2}ms) [{}]",
+        "[{}] {} {} -> {} ({:.2}ms) [Response: {}]",
         date,
         req.method,
         req.path,
         url_destination.to_string(),
         duration.as_secs_f64() * 1000.0,
-        status
+        format_size(response_size)
     )
 }

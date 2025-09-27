@@ -46,6 +46,8 @@ impl HttpRequest {
                 headers.insert(key, value);
             }
         }
+        // TODO: handle keep-alive between proxy and destination
+        headers.insert("connection".to_string(), "close".to_string());
 
         let request = Self {
             method,
@@ -54,5 +56,20 @@ impl HttpRequest {
             headers,
         };
         return Ok(request);
+    }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut result: Vec<u8> = Vec::new();
+
+        let request_line = format!("{} {} {}\r\n", self.method, self.path, self.version);
+        result.extend_from_slice(request_line.as_bytes());
+
+        for (key, value) in &self.headers {
+            let header_line = format!("{}: {}\r\n", key, value);
+            result.extend_from_slice(header_line.as_bytes());
+        }
+        result.extend_from_slice("\r\n".as_bytes()); // end of headers
+
+        return result;
     }
 }
