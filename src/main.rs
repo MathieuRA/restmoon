@@ -3,7 +3,7 @@ mod utils;
 
 use std::{net::TcpListener, thread, time::Instant};
 
-use crate::utils::{print::final_log, proxy::Proxy, size::format_size};
+use crate::utils::{print::final_log, proxy::Proxy};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     utils::print::initial_log();

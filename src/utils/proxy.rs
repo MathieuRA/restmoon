@@ -1,11 +1,6 @@
-use std::{
-    error::Error,
-    io::{Read, Write},
-    net::TcpStream,
-    time::Instant,
-};
+use std::{error::Error, io::Write, net::TcpStream};
 
-use crate::{http::request::HttpRequest, utils::size::format_size};
+use crate::http::{http_trait::Http, request::HttpRequest, response::HttpResponse};
 
 pub const HEADER_PROXY_DESTINATION: &str = "x-proxy-destination";
 
@@ -35,12 +30,12 @@ impl Proxy {
 
     pub fn handle_client(&mut self) -> Result<usize, Box<dyn Error>> {
         self.forward_request();
-        let (size, response) = self.read_response()?;
+        let response = self.read_response()?;
 
         // TODO: use Proxy::send_response()
-        self.source.write_all(&response[..size]).unwrap();
+        self.source.write_all(&response.to_bytes()).unwrap();
 
-        return Ok(size);
+        return Ok(response.body.map_or(0, |b| b.len()));
     }
 
     pub fn send_error_response(mut tcp_stream: TcpStream, error: Box<dyn Error>) {
@@ -57,22 +52,9 @@ impl Proxy {
         }
     }
 
-    // TODO: have a HttpResponse struct
-    fn read_response(&mut self) -> Result<(usize, [u8; 4096]), Box<dyn Error>> {
-        let mut buffer = [0; 4096];
-
-        let mut size = 0;
-        loop {
-            match self.target.read(&mut buffer) {
-                Ok(0) => break,
-                Ok(n) => size += n,
-                Err(e) => {
-                    eprintln!("Error reading response: {}", e);
-                    return Err(Box::new(e));
-                }
-            };
-        }
-        return Ok((size, buffer));
+    fn read_response(&mut self) -> Result<HttpResponse, Box<dyn Error>> {
+        let response = HttpResponse::parse(&self.target)?;
+        return Ok(response);
     }
 
     // TODO: have a HttpCode struct to easly match status code + description

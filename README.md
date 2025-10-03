@@ -33,7 +33,7 @@ cargo run
 cargo run
 
 # Then make requests with destination header:
-curl -H "X-Proxy-Destination: api.example.com:80" http://localhost:8081/api/users
+curl -H "X-Proxy-Destination: api.example.com" http://localhost:8081/api/users
 ```
 
 ### Example Output
@@ -45,9 +45,7 @@ curl -H "X-Proxy-Destination: api.example.com:80" http://localhost:8081/api/user
 
 📊 Request Analytics:
 ----------------------------------------
-[14:32:15] GET /rest/v0/vms -> localhost:8080 (245.30ms) [200 OK]
-[14:32:16] POST /rest/v0/vm/start -> localhost:8080 (1250.45ms) [200 OK]  
-[14:32:18] GET /rest/v0/hosts -> localhost:8080 (89.12ms) [200 OK]
+[19:44:07] GET /objects -> http://api.restful-api.dev:80 (250.57ms) [Response body: 1.2 KB]
 ```
 
 ## Configuration
@@ -86,7 +84,7 @@ The proxy will:
 ```
 Client → [Proxy Analyzer :8081] → Target API Server
                 ↓
-         Real-time Metrics
+             Metrics
 ```
 
 The proxy:
@@ -102,17 +100,18 @@ Contributions are welcome! This project is great for learning Rust networking co
 
 ## Future Features
 
-- [ ] Mesure response time 
-- [ ] Add payload size (body/response)
+- [x] Mesure response time 
+- [x] Add payload size (body/response)
+- [ ] Support keep-alive (source -> proxy -> destination)
+- [X] Parse the HTTP response to get status code
+- [ ] Support all HTTP verbs
+- [ ] Support SSE enpoints
 - [ ] Metrics persistence (SQLite/JSON)
 - [ ] WebUI dashboard for metrics visualization
-- [ ] Request/response filtering
-- [ ] Custom analytics rules
-- [ ] Performance alerting
 
 ## License
 
-This project is licensed under either of MIT license [LICENSE-MIT](http://opensource.org/licenses/MIT-MIT)
+This project is licensed under either of MIT license [LICENSE-MIT](https://opensource.org/license/mit)
 
 ## Acknowledgments
 

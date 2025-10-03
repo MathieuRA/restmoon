@@ -26,7 +26,7 @@ pub fn final_log(
     size: usize,
 ) {
     println!(
-        "[{}] {} {} -> {} ({:.2}ms) [Response: {}]",
+        "[{}] {} {} -> {} ({:.2}ms) [Response body: {}]",
         date,
         proxy.request.method,
         proxy.request.path,

@@ -1,11 +1,10 @@
 use std::{
     collections::HashMap,
-    io::{BufRead, BufReader},
-    net::TcpStream,
+    io::{BufRead, BufReader, Read},
 };
 
 use crate::{
-    http::url::URL,
+    http::{http_trait::Http, url::URL},
     utils::{self, proxy::HEADER_PROXY_DESTINATION},
 };
 
@@ -16,7 +15,7 @@ pub struct HttpRequest {
     pub version: String,
     pub headers: HashMap<String, String>,
     pub destination: URL,
-    // body: Vec<u8>,
+    pub body: Option<Vec<u8>>,
 }
 
 impl HttpRequest {
@@ -33,7 +32,7 @@ impl HttpRequest {
         return Err("No destination found".into());
     }
 
-    pub fn parse(stream: &mut TcpStream) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn parse<R: Read>(stream: &mut R) -> Result<Self, Box<dyn std::error::Error>> {
         let mut reader = BufReader::new(stream);
 
         // GET /vms HTTP/1.1\r\n
@@ -77,22 +76,22 @@ impl HttpRequest {
             version,
             headers,
             destination,
+            body: None,
         };
         return Ok(request);
     }
+}
 
-    pub fn to_bytes(&self) -> Vec<u8> {
-        let mut result: Vec<u8> = Vec::new();
+impl Http for HttpRequest {
+    fn get_first_line(&self) -> String {
+        return format!("{} {} {}", self.method, self.path, self.version);
+    }
 
-        let request_line = format!("{} {} {}\r\n", self.method, self.path, self.version);
-        result.extend_from_slice(request_line.as_bytes());
+    fn get_headers(&self) -> HashMap<String, String> {
+        return self.headers.clone();
+    }
 
-        for (key, value) in &self.headers {
-            let header_line = format!("{}: {}\r\n", key, value);
-            result.extend_from_slice(header_line.as_bytes());
-        }
-        result.extend_from_slice("\r\n".as_bytes()); // end of headers
-
-        return result;
+    fn get_body(&self) -> Option<Vec<u8>> {
+        return self.body.clone();
     }
 }
