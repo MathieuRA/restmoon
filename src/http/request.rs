@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    io::{BufRead, BufReader, Read},
+    io::{BufReader, Read},
 };
 
 use crate::{
@@ -35,35 +35,9 @@ impl HttpRequest {
     pub fn parse<R: Read>(stream: &mut R) -> Result<Self, Box<dyn std::error::Error>> {
         let mut reader = BufReader::new(stream);
 
-        // GET /vms HTTP/1.1\r\n
-        let mut request_line = String::new();
-        reader.read_line(&mut request_line)?;
+        let (method, path, version) = Self::parse_first_line(&mut reader)?;
 
-        let parts: Vec<&str> = request_line.trim().split_whitespace().collect();
-        if parts.len() != 3 {
-            return Err("Invalid HTTP request line".into());
-        }
-
-        let method = parts[0].to_string();
-        let path = parts[1].to_string();
-        let version = parts[2].to_string();
-
-        let mut headers = HashMap::new();
-        loop {
-            let mut line = String::new();
-            reader.read_line(&mut line)?;
-            let line = line.trim();
-
-            if line.is_empty() {
-                break;
-            }
-
-            if let Some(position) = line.find(":") {
-                let key = line[..position].trim().to_lowercase();
-                let value = line[position + 1..].trim().to_lowercase();
-                headers.insert(key, value);
-            }
-        }
+        let mut headers = Self::parse_headers(&mut reader)?;
         let destination = HttpRequest::get_destination(&headers)?;
         headers.remove(HEADER_PROXY_DESTINATION);
         headers.insert("host".to_string(), destination.hostname.clone());
